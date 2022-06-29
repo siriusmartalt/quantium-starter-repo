@@ -64,40 +64,32 @@ for filename in files:
         data['region'].append(key)
 
         date = row['date']
-        sales_of_day = copy.deepcopy(sales_of_day_default)
+    sales_of_day = copy.deepcopy(sales_of_day_default)
 
-dataframe = pandas.DataFrame.from_dict(data)
+sales = pandas.DataFrame.from_dict(data)
 
+salesE=sales[sales['region']=='east'][['date','sales']]
+salesN=sales[sales['region']=='north'][['date','sales']]
+salesW=sales[sales['region']=='west'][['date','sales']]
+salesS=sales[sales['region']=='south'][['date','sales']]
 
-from dash import Dash, html, dcc
+from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
-import plotly.graph_objects as go
 
-groups = dataframe.groupby(by='region')
 data = []
-colors=['red', 'blue', 'green', 'yellow']
-
-# print(groups.get_group('south'))
-
-for group, dataframe in groups:
-    dataframe = dataframe.sort_values(by=['date'])
-    trace = go.Scatter(x=dataframe.date.tolist(), 
-                       y=dataframe.sales.tolist(),
-                       marker=dict(color=colors[len(data)]),
-                       name=group)
-    data.append(trace)
 
 
 
 app = Dash(__name__)
 
-layout =  go.Layout(xaxis={'title': 'Time'},
-                    yaxis={'title': 'Produced Units'},
-                    margin={'l': 40, 'b': 40, 't': 50, 'r': 50},
-                    hovermode='closest')
 
-fig = go.Figure(data=data, layout=layout)  
-app.layout = html.Div(style={}, children=[
+
+fig = px.line(sales, x="date", y="sales")
+app.head = [html.Link(rel='stylesheet', href='./styles.css')]
+app.layout = html.Div(style={
+  'color': '#acc5db',
+  'background-color': '#202225',
+    }, children=[
     html.H1(
         children='Sales',
         style={
@@ -105,14 +97,36 @@ app.layout = html.Div(style={}, children=[
         }
     ),
 
-    html.Div(children='A graph showing sales over time', style={
-        'textAlign': 'center',
-    }),
+    # html.Div(children='Dash: A web application framework for your data.', style={
+    #     'textAlign': 'center',
+    # }),
 
     dcc.Graph(
-        id='example-graph-2',
+        id='graph',
         figure=fig
-    )
+    ),
+
+    html.Div([
+        dcc.RadioItems(['east', 'west','north', 'south'], 'east', id='my-input') 
+    ]),
+
+    html.Div(id='my-output'),
 ])
+
+@app.callback(
+    Output(component_id='graph', component_property='figure'),
+    Input(component_id='my-input', component_property='value')
+)
+def update_output_div(input_value):
+    match input_value:
+        case 'east':
+            return px.line(salesE, x="date", y="sales")
+        case 'west':
+            return px.line(salesW, x="date", y="sales")
+        case 'north':
+            return px.line(salesN, x="date", y="sales")
+        case 'south':
+            return px.line(salesS, x="date", y="sales")
+
 
 app.run_server(debug=True)
